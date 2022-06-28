@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"log"
 	"math/big"
 
@@ -9,7 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func (db *Database) SaveBlock(b *block.Block) error {
+func (db *Database) SaveBlock(ctx context.Context, b *block.Block) error {
 	// result := db.conn.Debug().CreateInBatches(logs, len(logs))
 	result := db.conn.Clauses(
 		clause.OnConflict{
@@ -23,14 +24,14 @@ func (db *Database) SaveBlock(b *block.Block) error {
 	return nil
 }
 
-func (db *Database) SetBlockDone(hash common.Hash) error {
+func (db *Database) SetBlockDone(ctx context.Context, hash common.Hash) error {
 	var b block.Block
-	result := db.conn.Table("block").Where("block_hash = ?", hash.String()).Find(&b)
+	result := db.conn.WithContext(ctx).Table("block").Where("block_hash = ?", hash.String()).Find(&b)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return result.Error
 	}
-	result = db.conn.Model(&block.Block{}).Where("block_hash = ?", hash.String()).Update("done", true)
+	result = db.conn.WithContext(ctx).Model(&block.Block{}).Where("block_hash = ?", hash.String()).Update("done", true)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return result.Error
@@ -38,9 +39,9 @@ func (db *Database) SetBlockDone(hash common.Hash) error {
 	return nil
 }
 
-func (db *Database) GetUnfinishedBlocks() ([]*big.Int, error) {
+func (db *Database) GetUnfinishedBlocks(ctx context.Context) ([]*big.Int, error) {
 	var blocks []block.Block
-	result := db.conn.Table("block").Where("done = ?", false).Find(&blocks)
+	result := db.conn.WithContext(ctx).Table("block").Where("done = ?", false).Find(&blocks)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return nil, result.Error
@@ -57,9 +58,9 @@ func (db *Database) GetUnfinishedBlocks() ([]*big.Int, error) {
 	return unfinishedBlocks, nil
 }
 
-func (db *Database) GetLastRecordedBlock() (*big.Int, error) {
+func (db *Database) GetLastRecordedBlock(ctx context.Context) (*big.Int, error) {
 	var b block.Block
-	result := db.conn.Table("block").Limit(1).Order("num DESC").Find(&b)
+	result := db.conn.WithContext(ctx).Table("block").Limit(1).Order("num DESC").Find(&b)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return nil, result.Error

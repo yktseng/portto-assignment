@@ -1,11 +1,13 @@
 package database
 
 import (
+	"context"
+
 	"github.com/yktseng/portto-assignment/internal/logs"
 	"gorm.io/gorm/clause"
 )
 
-func (db *Database) SaveLogs(logs []*logs.TXLog) error {
+func (db *Database) SaveLogs(ctx context.Context, logs []*logs.TXLog) error {
 	// result := db.conn.Debug().CreateInBatches(logs, len(logs))
 	if len(logs) == 0 {
 		return nil
@@ -13,7 +15,7 @@ func (db *Database) SaveLogs(logs []*logs.TXLog) error {
 	// for _, log := range logs {
 	// 	fmt.Println(log)
 	// }
-	result := db.conn.Clauses(
+	result := db.conn.WithContext(ctx).Clauses(
 		clause.OnConflict{
 			Columns:   []clause.Column{{Name: "tx_hash"}, {Name: "log_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"data"}),

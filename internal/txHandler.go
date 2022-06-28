@@ -36,6 +36,7 @@ func BlockHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database
 	txHashes chan common.Hash, txReceipts chan *transaction.TX) {
 	defer func() {
 		wg.Done()
+		recover()
 	}()
 
 	for {
@@ -48,12 +49,12 @@ func BlockHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database
 				blockTXMap.Store(block.Hash, e)
 			}
 			// log.Println("save block", block.Num.Int)
-			err := db.SaveBlock(block)
+			err := db.SaveBlock(ctx, block)
 			if err != nil {
 				log.Panicln("failed to write block to db")
 			}
 			h := common.BytesToHash(common.FromHex(block.Hash))
-			db.SetBlockDone(h)
+			db.SetBlockDone(ctx, h)
 			txs := block.Transactions()
 			for i := 0; i < len(txs); {
 				// Send TXs to tx workers
@@ -79,6 +80,7 @@ func TxHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database, b
 	txHashes chan common.Hash, txReceipts chan *transaction.TX) {
 	defer func() {
 		wg.Done()
+		recover()
 	}()
 
 	for {
@@ -86,11 +88,11 @@ func TxHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database, b
 		case tx := <-txReceipts:
 			// log.Println("receive tx", tx.Hash)
 			// write tx and logs to db
-			err := db.SaveTxs([]*transaction.TX{tx})
+			err := db.SaveTxs(ctx, []*transaction.TX{tx})
 			if err != nil {
 				log.Panicln("failed to write txs to db")
 			}
-			err = db.SaveLogs(tx.Logs())
+			err = db.SaveLogs(ctx, tx.Logs())
 			if err != nil {
 				log.Panicln("failed to write logs to db")
 			}
@@ -109,9 +111,9 @@ func TxHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database, b
 			e.Delete(common.BytesToHash(common.FromHex(tx.Hash)))
 			// remove block entry if all txs are collected
 			if isEmpty(e) {
-				// log.Println("is done: block", tx.BlockHash)
+				log.Println("is done: block", tx.BlockHash)
 				blockTXMap.Delete(tx.BlockHash)
-				db.SetBlockDone(h)
+				db.SetBlockDone(ctx, h)
 			}
 		case <-ctx.Done():
 			log.Println("tx handler closed")

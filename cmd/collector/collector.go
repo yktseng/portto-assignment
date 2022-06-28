@@ -21,6 +21,10 @@ import (
 )
 
 var pprof = flag.Bool("pprof", false, "enable pprof")
+var bWorkerSize = flag.Int("block-workers", 1, "number of block collectors")
+var txWorkerSize = flag.Int("tx-workers", 4, "number of tx collectors")
+
+
 
 func main() {
 
@@ -36,10 +40,8 @@ func main() {
 	}
 	log.Println("connected to endpoint")
 
-	bWorkerSize := 2
-	txWorkerSize := 6
 	var wg sync.WaitGroup
-	wg.Add(bWorkerSize + txWorkerSize)
+	wg.Add(*bWorkerSize + *txWorkerSize)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	db := database.NewDatabase()
@@ -48,13 +50,13 @@ func main() {
 		panic(err)
 	}
 
-	bCollectors := collector.NewBlockCollector(&rpc, bWorkerSize, &wg)
+	bCollectors := collector.NewBlockCollector(&rpc, *bWorkerSize, &wg)
 	
-	ub, err := db.GetUnfinishedBlocks()
+	ub, err := db.GetUnfinishedBlocks(ctx)
 	if err != nil {
 		panic(err)
 	}
-	fb, err := db.GetLastRecordedBlock()
+	fb, err := db.GetLastRecordedBlock(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +66,7 @@ func main() {
 	txHashes := make(chan common.Hash, 48)
 	txReceipts := make(chan *transaction.TX, 100)
 	txCollectors := collector.NewTxCollector(&rpc,
-		txWorkerSize, &wg, txHashes, txReceipts)
+		*txWorkerSize, &wg, txHashes, txReceipts)
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -79,7 +81,7 @@ func main() {
 	wg.Add(1)
 	go internal.BlockHandler(ctx, &wg, db, blocks, txHashes, txReceipts)
 
-	for i := 0; i < txWorkerSize * 2; i++ {
+	for i := 0; i < *txWorkerSize * 3; i++ {
 		wg.Add(1)
 		go internal.TxHandler(ctx, &wg, db, blocks, txHashes, txReceipts)
 	}
