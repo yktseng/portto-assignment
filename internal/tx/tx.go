@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -30,7 +31,29 @@ type TX struct {
 	Nonce     int
 	Data      string         `gorm:"column:tx_data;type:TEXT"`
 	Value     pgtype.Numeric `gorm:"column:amount"`
-	logs      []*logs.TXLog
+	Logs      []*logs.TXLog  `gorm:"-"`
+}
+
+func (t *TX) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		BlockHash string        `json:"block_hash"`
+		Hash      string        `json:"tx_hash"`
+		From      string        `json:"from"`
+		To        string        `json:"to"`
+		Nonce     int           `json:"nonce"`
+		Data      string        `json:"data"`
+		Value     int64         `json:"value"`
+		Logs      []*logs.TXLog `json:"logs,omitempty"`
+	}{
+		BlockHash: t.BlockHash,
+		Hash:      t.Hash,
+		From:      t.From,
+		To:        t.To,
+		Nonce:     t.Nonce,
+		Data:      t.Data,
+		Value:     t.Value.Int.Int64(),
+		Logs:      t.Logs,
+	})
 }
 
 // func PrintTransactionReceipt(t *types.Receipt) {
@@ -44,10 +67,6 @@ func From(tx *types.Transaction, chainID *big.Int) (string, error) {
 	} else {
 		return msg.From().String(), nil
 	}
-}
-
-func (t *TX) Logs() []*logs.TXLog {
-	return t.logs
 }
 
 func FromGethTX(tx *types.Transaction, receipt *types.Receipt) (*TX, error) {
@@ -77,7 +96,7 @@ func FromGethTX(tx *types.Transaction, receipt *types.Receipt) (*TX, error) {
 		Nonce:     int(tx.Nonce()),
 		Data:      hex.EncodeToString(tx.Data()),
 		Value:     pgtype.Numeric{Int: tx.Value(), Status: pgtype.Present},
-		logs:      txLogs,
+		Logs:      txLogs,
 	}
 	return t, nil
 }

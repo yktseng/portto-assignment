@@ -10,6 +10,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type BlockQuery struct {
+	Limit int    `json:"limit" form:"limit" binding:"omitempty,gte=1,lte=10000"`
+	ID    string `json:"id" uri:"id"`
+}
+
 func (db *Database) SaveBlock(ctx context.Context, b *block.Block) error {
 	// result := db.conn.Debug().CreateInBatches(logs, len(logs))
 	result := db.conn.Clauses(
@@ -71,4 +76,45 @@ func (db *Database) GetLastRecordedBlock(ctx context.Context) (*big.Int, error) 
 		return nil, err
 	}
 	return big.NewInt(n64), nil
+}
+
+func (db *Database) Getblocks(ctx context.Context, q BlockQuery) ([]block.Block, error) {
+	var blocks []block.Block
+	query := db.conn.WithContext(ctx).Table("block")
+	if q.Limit > 0 {
+		query = query.Limit(q.Limit).Order("block_hash desc")
+	}
+	result := query.Find(&blocks)
+	if result.Error != nil {
+		log.Panicln(result.Error)
+		return nil, result.Error
+	}
+	return blocks, nil
+}
+
+func (db *Database) GetblockDetail(ctx context.Context, q BlockQuery) (*block.Block, error) {
+	var block block.Block
+	query := db.conn.WithContext(ctx).Table("block")
+	if q.ID != "" {
+		query = query.Where("block_hash = ?", q.ID)
+	}
+	result := query.Find(&block)
+	if result.Error != nil {
+		log.Panicln(result.Error)
+		return nil, result.Error
+	}
+
+	var txs []string
+	result = db.conn.WithContext(ctx).Table("tx").Select("tx_hash").Where("block_hash = ?", q.ID).Find(&txs)
+	if result.Error != nil {
+		log.Panicln(result.Error)
+		return nil, result.Error
+	}
+	var hashes []common.Hash
+	for _, tx := range txs {
+		hashes = append(hashes, common.HexToHash(tx))
+	}
+	// fmt.Println(hashes)
+	block.TXS = hashes
+	return &block, nil
 }

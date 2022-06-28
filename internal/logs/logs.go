@@ -17,9 +17,9 @@ import (
 // );
 
 type TXLog struct {
-	TXHash string `gorm:"column:tx_hash"`
-	Index  int    `gorm:"column:log_id"`
-	Data   string `gorm:"type:TEXT"`
+	TXHash string `json:"-" gorm:"column:tx_hash"`
+	Index  int    `json:"index" gorm:"column:log_id"`
+	Data   string `json:"data" gorm:"type:TEXT"`
 }
 
 func FromGethLog(l *types.Log) (*TXLog, error) {

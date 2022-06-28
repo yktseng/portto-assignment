@@ -1,6 +1,7 @@
 package block
 
 import (
+	"encoding/json"
 	"math/big"
 	"time"
 
@@ -24,7 +25,23 @@ type Block struct {
 	Time       time.Time      `gorm:"column:block_time"`
 	ParentHash string         `gorm:"column:parent_hash"`
 	Done       bool
-	txs        []common.Hash
+	TXS        []common.Hash `gorm:"-"`
+}
+
+func (b *Block) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Num        int64         `json:"num"`
+		Hash       string        `json:"block_hash"`
+		Time       time.Time     `json:"block_time"`
+		ParentHash string        `json:"parent_hash"`
+		TXS        []common.Hash `json:"transactions,omitempty"`
+	}{
+		Num:        b.Num.Int.Int64(),
+		Hash:       b.Hash,
+		Time:       b.Time,
+		ParentHash: b.ParentHash,
+		TXS: b.TXS,
+	})
 }
 
 // func PrintBlock(b *types.Block) {
@@ -48,7 +65,7 @@ func NewBlock(num *big.Int, hash, parentHash string,
 		Hash:       hash,
 		Time:       blockTime,
 		ParentHash: parentHash,
-		txs:        txs,
+		TXS:        txs,
 	}
 }
 
@@ -63,7 +80,7 @@ func FromGethBlock(b *types.Block) (*Block, error) {
 }
 
 func (b *Block) Transactions() []common.Hash {
-	return b.txs
+	return b.TXS
 }
 
 func (Block) TableName() string {

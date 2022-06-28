@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -92,7 +91,7 @@ func TxHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database, b
 			if err != nil {
 				log.Panicln("failed to write txs to db")
 			}
-			err = db.SaveLogs(ctx, tx.Logs())
+			err = db.SaveLogs(ctx, tx.Logs)
 			if err != nil {
 				log.Panicln("failed to write logs to db")
 			}
@@ -101,7 +100,7 @@ func TxHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database, b
 			d, ok := blockTXMap.Load(tx.BlockHash)
 			if !ok {
 				// should not happen
-				fmt.Println(blockTXMap, h)
+				// fmt.Println(blockTXMap, h)
 				log.Panicln("BUG: tx is not found in blockTXMap")
 			}
 			e, ok := d.(*sync.Map)
