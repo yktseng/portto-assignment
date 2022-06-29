@@ -75,7 +75,7 @@ func (s *Server) getTXByHash(c *gin.Context) {
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusOK,
 			gin.H{
-				"error":   "failed to fetch for blocks",
+				"error":   "failed to fetch for TX",
 				"message": err.Error(),
 			})
 		return

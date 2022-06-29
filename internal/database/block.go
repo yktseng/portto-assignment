@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"log"
 	"math/big"
 
@@ -137,7 +138,9 @@ func (db *Database) GetblockDetail(ctx context.Context, q BlockQuery) (*block.Bl
 		log.Panicln(result.Error)
 		return nil, result.Error
 	}
-
+	if q.ID != block.Hash {
+		return nil, errors.New("block not found")
+	}
 	var txs []string
 	result = db.conn.WithContext(ctx).Table("txs").Select("tx_hash").Where("block_hash = ?", q.ID).Find(&txs)
 	if result.Error != nil {
