@@ -14,14 +14,31 @@ To initialize the db schema,
 
 `psql -p 5432 -U portto -W -h localhost -d portto -a -f ./scripts/create_table.sql`
 
+## To run the program
+
+`go run cmd/collector/collector.go` starts the indexer service
+
+possible input parameters are
+
+*  bWorkerSize: workers to collect blocks, default is 1
+*  txWorkerSize: workers to collect transactions, default is 8
+
+`go run cmd/webserver/webserver.go` starts the web server
+
 ## Perf tuning
 
-Apple M1 Pro 2021
+Apple M1 Pro 2021, postgresql docker image
 
 2 block collectors and 16 tx collectors
 
 6000 txs per minute
 350 blocks
+
+48 tx collectors
+
+16000 txs per minute
+2000 blocks
+
 
 4 block collectors and 32 tx collectors
 
