@@ -2,7 +2,6 @@ package myeth
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/big"
 
@@ -29,7 +28,7 @@ func (r *RPC) SubscribeNewHeaders(ctx context.Context, output chan BlockNumHash)
 	for {
 		select {
 		case head := <-ch:
-			fmt.Println("header received", head.Number)
+			// fmt.Println("header received", head.Number)
 			b := BlockNumHash{
 				Hash: head.Hash(),
 				Num:  head.Number,
