@@ -1,16 +1,20 @@
 package database
 
 import (
+	transaction "github.com/yktseng/portto-assignment/internal/tx"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 type Database struct {
-	conn *gorm.DB
+	conn    *gorm.DB
+	txQueue []*transaction.TX
 }
 
 func NewDatabase() *Database {
-	return &Database{}
+	return &Database{
+		txQueue: make([]*transaction.TX, 100),
+	}
 }
 
 func (d *Database) Connect() error {
@@ -20,5 +24,9 @@ func (d *Database) Connect() error {
 		return err
 	}
 	d.conn = conn
+	sqlDB, err := d.conn.DB()
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(20)
+	// d.conn = d.conn
 	return nil
 }

@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -56,6 +55,7 @@ func (s *Server) getBlockByID(c *gin.Context) {
 			})
 		return
 	}
+	// fmt.Println(block)
 	c.JSON(http.StatusOK, block)
 }
 
@@ -70,7 +70,7 @@ func (s *Server) getTXByHash(c *gin.Context) {
 			})
 		return
 	}
-	fmt.Println(query)
+	// fmt.Println(query)
 	tx, err := s.db.GetTXDetail(c.Request.Context(), query)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusOK,

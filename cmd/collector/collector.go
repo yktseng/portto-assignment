@@ -17,6 +17,7 @@ import (
 	"github.com/yktseng/portto-assignment/internal/collector"
 	"github.com/yktseng/portto-assignment/internal/database"
 	"github.com/yktseng/portto-assignment/internal/myeth"
+	"github.com/yktseng/portto-assignment/internal/perf"
 	transaction "github.com/yktseng/portto-assignment/internal/tx"
 )
 
@@ -24,21 +25,27 @@ var pprof = flag.Bool("pprof", false, "enable pprof")
 var bWorkerSize = flag.Int("block-workers", 1, "number of block collectors")
 var txWorkerSize = flag.Int("tx-workers", 4, "number of tx collectors")
 
-
-
 func main() {
 
 	flag.Parse()
 	if *pprof {
 		startPProf()
 	}
-
-	rpc := myeth.RPC{}
-	result := rpc.Connect("https://data-seed-prebsc-1-s1.binance.org:8545")
-	if !result {
-		panic("failed to connect to eth endpoint")
+	endpoints := []string{"https://data-seed-prebsc-1-s2.binance.org:8545",
+		"https://data-seed-prebsc-1-s1.binance.org:8545",
+		"https://data-seed-prebsc-1-s3.binance.org:8545",
+		"https://data-seed-prebsc-2-s3.binance.org:8545",
 	}
-	log.Println("connected to endpoint")
+	rpcList := []*myeth.RPC{}
+	for i := 0; i < len(endpoints); i++ {
+		rpc := myeth.RPC{}
+		result := rpc.Connect(endpoints[i])
+		if !result {
+			panic("failed to connect to eth endpoint")
+		}
+		log.Println("connected to endpoint", i)
+		rpcList = append(rpcList, &rpc)
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(*bWorkerSize + *txWorkerSize)
@@ -50,8 +57,8 @@ func main() {
 		panic(err)
 	}
 
-	bCollectors := collector.NewBlockCollector(&rpc, *bWorkerSize, &wg)
-	
+	bCollectors := collector.NewBlockCollector(rpcList, *bWorkerSize, &wg)
+
 	ub, err := db.GetUnfinishedBlocks(ctx)
 	if err != nil {
 		panic(err)
@@ -63,9 +70,9 @@ func main() {
 	bCollectors.SetUnfinishedBlocks(ub)
 	bCollectors.SetFromBlock(fb.Add(fb, big.NewInt(1)))
 
-	txHashes := make(chan common.Hash, 48)
-	txReceipts := make(chan *transaction.TX, 100)
-	txCollectors := collector.NewTxCollector(&rpc,
+	txHashes := make(chan []common.Hash, *txWorkerSize * 2)
+	txReceipts := make(chan []*transaction.TX, *txWorkerSize * 2)
+	txCollectors := collector.NewTxCollector(rpcList,
 		*txWorkerSize, &wg, txHashes, txReceipts)
 
 	c := make(chan os.Signal)
@@ -75,15 +82,27 @@ func main() {
 		log.Println("Ctrl-c")
 		cancel()
 	}()
+
+	bPerf := make(chan int, *txWorkerSize)
+	txPerf := make(chan int, *txWorkerSize)
+
+	monitor := perf.Monitor{
+		BPerf:  bPerf,
+		TXPerf: txPerf,
+	}
+	go func() {
+		monitor.Start()
+	}()
+
 	blocks := bCollectors.Start(ctx)
 	txCollectors.Start(ctx)
 
 	wg.Add(1)
 	go internal.BlockHandler(ctx, &wg, db, blocks, txHashes, txReceipts)
 
-	for i := 0; i < *txWorkerSize * 3; i++ {
+	for i := 0; i < *txWorkerSize; i++ {
 		wg.Add(1)
-		go internal.TxHandler(ctx, &wg, db, blocks, txHashes, txReceipts)
+		go internal.TxHandler(ctx, i, &wg, db, blocks, txHashes, txReceipts, bPerf, txPerf)
 	}
 
 	wg.Wait()

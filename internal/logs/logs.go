@@ -31,5 +31,5 @@ func FromGethLog(l *types.Log) (*TXLog, error) {
 }
 
 func (TXLog) TableName() string {
-	return "log"
+	return "logs"
 }

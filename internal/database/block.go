@@ -31,7 +31,7 @@ func (db *Database) SaveBlock(ctx context.Context, b *block.Block) error {
 
 func (db *Database) SetBlockDone(ctx context.Context, hash common.Hash) error {
 	var b block.Block
-	result := db.conn.WithContext(ctx).Table("block").Where("block_hash = ?", hash.String()).Find(&b)
+	result := db.conn.WithContext(ctx).Table("blocks").Where("block_hash = ?", hash.String()).Find(&b)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return result.Error
@@ -46,7 +46,7 @@ func (db *Database) SetBlockDone(ctx context.Context, hash common.Hash) error {
 
 func (db *Database) GetUnfinishedBlocks(ctx context.Context) ([]*big.Int, error) {
 	var blocks []block.Block
-	result := db.conn.WithContext(ctx).Table("block").Where("done = ?", false).Find(&blocks)
+	result := db.conn.WithContext(ctx).Table("blocks").Where("done = ?", false).Find(&blocks)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return nil, result.Error
@@ -65,7 +65,7 @@ func (db *Database) GetUnfinishedBlocks(ctx context.Context) ([]*big.Int, error)
 
 func (db *Database) GetLastRecordedBlock(ctx context.Context) (*big.Int, error) {
 	var b block.Block
-	result := db.conn.WithContext(ctx).Table("block").Limit(1).Order("num DESC").Find(&b)
+	result := db.conn.WithContext(ctx).Table("blocks").Limit(1).Order("num DESC").Find(&b)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return nil, result.Error
@@ -80,7 +80,7 @@ func (db *Database) GetLastRecordedBlock(ctx context.Context) (*big.Int, error) 
 
 func (db *Database) Getblocks(ctx context.Context, q BlockQuery) ([]block.Block, error) {
 	var blocks []block.Block
-	query := db.conn.WithContext(ctx).Table("block")
+	query := db.conn.WithContext(ctx).Table("blocks")
 	if q.Limit > 0 {
 		query = query.Limit(q.Limit).Order("block_hash desc")
 	}
@@ -94,7 +94,7 @@ func (db *Database) Getblocks(ctx context.Context, q BlockQuery) ([]block.Block,
 
 func (db *Database) GetblockDetail(ctx context.Context, q BlockQuery) (*block.Block, error) {
 	var block block.Block
-	query := db.conn.WithContext(ctx).Table("block")
+	query := db.conn.WithContext(ctx).Table("blocks")
 	if q.ID != "" {
 		query = query.Where("block_hash = ?", q.ID)
 	}
@@ -105,7 +105,7 @@ func (db *Database) GetblockDetail(ctx context.Context, q BlockQuery) (*block.Bl
 	}
 
 	var txs []string
-	result = db.conn.WithContext(ctx).Table("tx").Select("tx_hash").Where("block_hash = ?", q.ID).Find(&txs)
+	result = db.conn.WithContext(ctx).Table("txs").Select("tx_hash").Where("block_hash = ?", q.ID).Find(&txs)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return nil, result.Error

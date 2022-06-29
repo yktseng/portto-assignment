@@ -2,7 +2,7 @@ package database
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
 
 	"github.com/yktseng/portto-assignment/internal/logs"
@@ -30,7 +30,7 @@ func (db *Database) SaveTxs(ctx context.Context, txs []*transaction.TX) error {
 
 func (db *Database) GetTXDetail(ctx context.Context, q TXQuery) (*transaction.TX, error) {
 	var tx transaction.TX
-	query := db.conn.WithContext(ctx).Table("tx")
+	query := db.conn.WithContext(ctx).Table("txs")
 	if q.TXHash != "" {
 		query = query.Where("tx_hash = ?", q.TXHash)
 	}
@@ -39,14 +39,16 @@ func (db *Database) GetTXDetail(ctx context.Context, q TXQuery) (*transaction.TX
 		log.Panicln(result.Error)
 		return nil, result.Error
 	}
-
+	if tx.Hash != q.TXHash {
+		// not found
+		return nil, errors.New("tx not found")
+	}
 	var logs []*logs.TXLog
-	result = db.conn.WithContext(ctx).Table("log").Where("tx_hash = ?", q.TXHash).Find(&logs)
+	result = db.conn.WithContext(ctx).Table("logs").Where("tx_hash = ?", q.TXHash).Find(&logs)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return nil, result.Error
 	}
-	fmt.Println(q.TXHash, logs)
 	tx.Logs = logs
 	return &tx, nil
 }

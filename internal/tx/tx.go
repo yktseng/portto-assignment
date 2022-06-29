@@ -102,5 +102,5 @@ func FromGethTX(tx *types.Transaction, receipt *types.Receipt) (*TX, error) {
 }
 
 func (TX) TableName() string {
-	return "tx"
+	return "txs"
 }

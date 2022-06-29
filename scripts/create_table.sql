@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS block (
+CREATE TABLE IF NOT EXISTS blocks (
     num NUMERIC,
     block_hash CHAR(66) PRIMARY KEY,
     block_time TIMESTAMPTZ NOT NULL,
@@ -9,9 +9,9 @@ CREATE TABLE IF NOT EXISTS block (
     done BOOLEAN DEFAULT FALSE
 );
 
-CREATE INDEX num_idx ON block(num);
+CREATE INDEX num_idx ON blocks(num);
 
-CREATE TABLE IF NOT EXISTS tx (
+CREATE TABLE IF NOT EXISTS txs (
   block_hash CHAR(66) NOT NULL,
   tx_hash CHAR(66) PRIMARY KEY,
   sender CHAR(42) NOT NULL,
@@ -21,15 +21,17 @@ CREATE TABLE IF NOT EXISTS tx (
   amount NUMERIC,
   CONSTRAINT fk_block_hash
     FOREIGN KEY(block_hash)
-      REFERENCES block(block_hash)
+      REFERENCES blocks(block_hash)
 );
 
-CREATE TABLE IF NOT EXISTS log (
+CREATE TABLE IF NOT EXISTS logs (
   tx_hash CHAR(66),
   log_id int,
   data TEXT,
   CONSTRAINT fk_tx_hash
     FOREIGN KEY(tx_hash)
-      REFERENCES tx(tx_hash),
+      REFERENCES txs(tx_hash),
   PRIMARY KEY (tx_hash, log_id)
 );
+
+CREATE INDEX tx_hash_idx ON logs(tx_hash);

@@ -15,15 +15,15 @@ import (
 type BlockCollector struct {
 	unfinishedBlocks []*big.Int
 	fromBlock        *big.Int
-	rpc              *myeth.RPC
+	rpcList             []*myeth.RPC
 	workerSize       int
 	bnChan           chan *big.Int
 	wg               *sync.WaitGroup
 }
 
-func NewBlockCollector(rpc *myeth.RPC, workerSize int, wg *sync.WaitGroup) *BlockCollector {
+func NewBlockCollector(rpcList []*myeth.RPC, workerSize int, wg *sync.WaitGroup) *BlockCollector {
 	return &BlockCollector{
-		rpc:        rpc,
+		rpcList:        rpcList,
 		workerSize: workerSize,
 		bnChan:     make(chan *big.Int),
 		wg:         wg,
@@ -36,7 +36,9 @@ func (c *BlockCollector) SetUnfinishedBlocks(blocks []*big.Int) {
 }
 
 func (c *BlockCollector) SetFromBlock(block *big.Int) {
-	c.fromBlock = block
+	if block.Cmp(big.NewInt(19074015)) == 1 {
+		c.fromBlock = block
+	}
 }
 
 func (c *BlockCollector) Start(ctx context.Context) chan *block.Block {
@@ -75,7 +77,7 @@ func (c *BlockCollector) worker(ctx context.Context, workerNum int, output chan 
 			var b *block.Block
 			var err error
 			for {
-				b, err = c.rpc.GetBlock(ctx, num)
+				b, err = c.rpcList[workerNum % len(c.rpcList)].GetBlock(ctx, num)
 				if err != nil {
 					log.Println(err)
 					// if the block is not found yet, wait for 3 seconds and try again

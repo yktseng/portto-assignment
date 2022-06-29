@@ -84,5 +84,5 @@ func (b *Block) Transactions() []common.Hash {
 }
 
 func (Block) TableName() string {
-	return "block"
+	return "blocks"
 }
