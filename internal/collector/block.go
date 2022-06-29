@@ -13,6 +13,8 @@ import (
 	"github.com/yktseng/portto-assignment/internal/myeth"
 )
 
+var confirmRequiredBlock int = 20
+
 type BlockCollector struct {
 	unfinishedBlocks []*big.Int
 	fromBlock        *big.Int
@@ -23,6 +25,7 @@ type BlockCollector struct {
 	bnChan           chan *big.Int
 	wg               *sync.WaitGroup
 	blockHeight      *big.Int
+	missingBlocks    []*big.Int
 }
 
 func NewBlockCollector(rpcList []*myeth.RPC, ws *myeth.RPC,
@@ -41,6 +44,10 @@ func NewBlockCollector(rpcList []*myeth.RPC, ws *myeth.RPC,
 
 func (c *BlockCollector) SetUnfinishedBlocks(blocks []*big.Int) {
 	c.unfinishedBlocks = blocks
+}
+
+func (c *BlockCollector) SetMissingBlocks(blocks []*big.Int) {
+	c.missingBlocks = blocks
 }
 
 func (c *BlockCollector) SetFromBlock(block *big.Int) {
@@ -75,33 +82,45 @@ func (c *BlockCollector) Start(ctx context.Context) chan *block.Block {
 			log.Println("Unfinished block", c.unfinishedBlocks[i])
 			c.bnChan <- c.unfinishedBlocks[i]
 		}
+		for i := 0; i < len(c.missingBlocks); i++ {
+			log.Println("Missing block", c.missingBlocks[i])
+			c.bnChan <- c.missingBlocks[i]
+		}
 		i := c.fromBlock
 		log.Println("Start from block", i)
 		// then start from the last block recorded in db
 		for {
-			num := new(big.Int).Set(i)
-			if num.Cmp(c.blockHeight) < 1 {
-				select {
-				case c.bnChan <- num:
-					i = i.Add(i, big.NewInt(1))
-				default:
-				}
-			}
-			select {
-			case b, ok := <-newBlockInfo:
-				if !ok {
-					return
-				}
-				log.Println("New block header", b.Num)
-				c.blockHeight = b.Num
-				if i.Cmp(c.blockHeight) >= 1 {
-					c.bnChan <- b.Num
-				}
-			default:
+			shouldReturn := c.sendBlockRequest(i, newBlockInfo)
+			if shouldReturn {
+				return
 			}
 		}
 	}()
 	return output
+}
+
+func (c *BlockCollector) sendBlockRequest(i *big.Int, newBlockInfo chan myeth.BlockNumHash) bool {
+	num := new(big.Int).Set(i)
+	if num.Cmp(c.blockHeight) < 1 {
+		select {
+		case c.bnChan <- num:
+			i = i.Add(i, big.NewInt(1))
+		default:
+		}
+	}
+	select {
+	case b, ok := <-newBlockInfo:
+		if !ok {
+			return true
+		}
+		log.Println("New block header", b.Num)
+		c.blockHeight = b.Num
+		if i.Cmp(c.blockHeight) >= 1 {
+			c.bnChan <- b.Num
+		}
+	default:
+	}
+	return false
 }
 
 func (c *BlockCollector) worker(ctx context.Context, workerNum int, output chan *block.Block) {
@@ -110,46 +129,46 @@ func (c *BlockCollector) worker(ctx context.Context, workerNum int, output chan 
 		c.wg.Done()
 	}()
 	for {
-		J:
+	J:
 		select {
 		case num := <-c.bnChan:
 			for {
-			// log.Println("handle block", num)
-			var b *block.Block
-			var err error
-			b, err = c.rpcList[workerNum%len(c.rpcList)].GetBlock(ctx, num)
-			if err != nil {
-				log.Println("block", num, err)
-				// if the block is not found yet, wait for 3 seconds and try again
-				if err.Error() == "not found" {
-					break
+				// log.Println("handle block", num)
+				var b *block.Block
+				var err error
+				b, err = c.rpcList[workerNum%len(c.rpcList)].GetBlock(ctx, num)
+				if err != nil {
+					log.Println("block", num, err)
+					// if the block is not found yet, wait for 3 seconds and try again
+					if err.Error() == "not found" {
+						break
+					}
+					return
 				}
-				return
-			}
-			if c.blockHeight.Cmp(big.NewInt(0)) > 0 { // see recent 20 blocks as unconfirmed
-				diff := big.NewInt(0).Sub(c.blockHeight, num)
-				if diff.Cmp(big.NewInt(20)) < 0 {
-					fmt.Println("unconfirmed block", c.blockHeight.Int64(), num.Int64(), diff)
-					b.Stable = false
+				if c.blockHeight.Cmp(big.NewInt(0)) > 0 { // see recent 20 blocks as unconfirmed
+					diff := big.NewInt(0).Sub(c.blockHeight, num)
+					if diff.Cmp(big.NewInt(int64(confirmRequiredBlock))) < 0 {
+						fmt.Println("unconfirmed block", c.blockHeight.Int64(), num.Int64(), diff)
+						b.Stable = false
+					}
+				}
+			L:
+				select {
+				case output <- b:
+					if !b.Stable {
+						// get block number (b.Num - 20) to replace the unconfirmed one
+						num = big.NewInt(0).Sub(num, big.NewInt(int64(confirmRequiredBlock)))
+						log.Println("fetch block", num, "again")
+						continue
+					}
+					break J
+				case <-ctx.Done():
+					return
+				default:
+					time.Sleep(10 * time.Millisecond)
+					break L
 				}
 			}
-		L:
-			select {
-			case output <- b:
-				if !b.Stable {
-					// get block number (b.Num - 20) to replace the unconfirmed one
-					num = big.NewInt(0).Sub(num, big.NewInt(20))
-					log.Println("fetch block", num, "again")
-					continue
-				}
-				break J
-			case <-ctx.Done():
-				return
-			default:
-				time.Sleep(10 * time.Millisecond)
-				break L
-			}
-		}
 		case <-ctx.Done():
 			return
 		}

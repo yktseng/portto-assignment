@@ -75,6 +75,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	mb, err := db.GetMissingBlocks(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	bCollectors.SetMissingBlocks(mb)
 	bCollectors.SetUnfinishedBlocks(ub)
 	bCollectors.SetFromBlock(fb.Add(fb, big.NewInt(1)))
 

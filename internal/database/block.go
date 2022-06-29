@@ -78,6 +78,25 @@ func (db *Database) GetUnfinishedBlocks(ctx context.Context) ([]*big.Int, error)
 	return unfinishedBlocks, nil
 }
 
+func (db *Database) GetMissingBlocks(ctx context.Context) ([]*big.Int, error) {
+	var blocks []block.Block
+	result := db.conn.Debug().WithContext(ctx).Raw("SELECT * DISTINCT num+1 FROM blocks WHERE num+1 NOT IN(SELECT DISTINCT num FROM blocks)")
+	if result.Error != nil {
+		log.Panicln(result.Error)
+		return nil, result.Error
+	}
+	var unfinishedBlocks []*big.Int
+	for _, b := range blocks {
+		var n64 int64
+		err := b.Num.AssignTo(&n64)
+		if err != nil {
+			return nil, err
+		}
+		unfinishedBlocks = append(unfinishedBlocks, big.NewInt(n64))
+	}
+	return unfinishedBlocks, nil
+}
+
 func (db *Database) GetLastRecordedBlock(ctx context.Context) (*big.Int, error) {
 	var b block.Block
 	result := db.conn.WithContext(ctx).Table("blocks").Limit(1).Order("num DESC").Find(&b)
