@@ -25,30 +25,50 @@ possible input parameters are
 
 `go run cmd/webserver/webserver.go` starts the web server
 
+## What's done
+
+* API server: three apis
+* Block indexer service
+
+* Able to adjust block and transaction collector sizes
+* Use websocket endpoint to listen to new headers
+* It seems that BSC blocks does not contain uncles, so I just blindly see the recent 20 blocks as unconfirmed and fetch the blocks again after 20 blocks
+
 ## Perf tuning
 
-Apple M1 Pro 2021, postgresql docker image
+Apple M1 Pro 2021, postgresql installed as a docker image
 
-2 block collectors and 16 tx collectors
+### 2 block collectors 
+
+#### 16 tx collectors
 
 6000 txs per minute
+
 350 blocks
 
-48 tx collectors
+#### 48 tx collectors
 
 16000 txs per minute
+
 2000 blocks
 
 
-4 block collectors and 32 tx collectors
+### 4 block collectors 
+
+#### 32 tx collectors
 
 12000 txs per minute
+
 750 blocks
 
-8 block collectors and 64 tx collectors
+### 8 block collectors 
+
+#### 64 tx collectors
 
 CPU 55%  memory 35mb
+
 22000 txs per minutes
+
 1600 blocks
 
 kicked by bsc nodes...
