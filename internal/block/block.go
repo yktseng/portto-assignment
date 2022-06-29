@@ -25,22 +25,27 @@ type Block struct {
 	Time       time.Time      `gorm:"column:block_time"`
 	ParentHash string         `gorm:"column:parent_hash"`
 	Done       bool
+	Stable     bool
 	TXS        []common.Hash `gorm:"-"`
 }
 
 func (b *Block) MarshalJSON() ([]byte, error) {
+	var n64 int64
+	b.Num.AssignTo(&n64)
 	return json.Marshal(&struct {
 		Num        int64         `json:"num"`
 		Hash       string        `json:"block_hash"`
 		Time       time.Time     `json:"block_time"`
 		ParentHash string        `json:"parent_hash"`
 		TXS        []common.Hash `json:"transactions,omitempty"`
+		Confirmed  bool          `json:"confirmed"`
 	}{
-		Num:        b.Num.Int.Int64(),
+		Num:        n64,
 		Hash:       b.Hash,
 		Time:       b.Time,
 		ParentHash: b.ParentHash,
-		TXS: b.TXS,
+		TXS:        b.TXS,
+		Confirmed:  b.Stable,
 	})
 }
 

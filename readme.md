@@ -16,6 +16,8 @@ To initialize the db schema,
 
 ## Perf tuning
 
+Apple M1 Pro 2021
+
 2 block collectors and 16 tx collectors
 
 6000 txs per minute
@@ -28,7 +30,9 @@ To initialize the db schema,
 
 8 block collectors and 64 tx collectors
 
-CPU 55%
+CPU 55%  memory 35mb
 22000 txs per minutes
 1600 blocks
+
+kicked by bsc nodes...
 

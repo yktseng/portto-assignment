@@ -41,7 +41,7 @@ func BlockHandler(ctx context.Context, wg *sync.WaitGroup, db *database.Database
 	for {
 		select {
 		case block := <-blocks:
-			// log.Println("received block", block.Num.Int, block.Hash)
+			log.Println("received block", block.Num.Int, block.Hash)
 			// create an entry in blockTXMap
 			e := newTxEntries(block)
 			if len(block.Transactions()) > 0 {

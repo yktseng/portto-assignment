@@ -37,6 +37,8 @@ func main() {
 		"https://data-seed-prebsc-2-s3.binance.org:8545",
 	}
 	rpcList := []*myeth.RPC{}
+
+	ws := "wss://speedy-nodes-nyc.moralis.io/abd644fc46832389b55dc6d9/bsc/testnet/ws"
 	for i := 0; i < len(endpoints); i++ {
 		rpc := myeth.RPC{}
 		result := rpc.Connect(endpoints[i])
@@ -46,6 +48,12 @@ func main() {
 		log.Println("connected to endpoint", i)
 		rpcList = append(rpcList, &rpc)
 	}
+	wsEndpoint := myeth.RPC{}
+	result := wsEndpoint.Connect(ws)
+	if !result {
+		panic("failed to connect to eth endpoint")
+	}
+	log.Println("connected to websocket endpoint")
 
 	var wg sync.WaitGroup
 	wg.Add(*bWorkerSize + *txWorkerSize)
@@ -57,7 +65,7 @@ func main() {
 		panic(err)
 	}
 
-	bCollectors := collector.NewBlockCollector(rpcList, *bWorkerSize, &wg)
+	bCollectors := collector.NewBlockCollector(rpcList, &wsEndpoint, db, *bWorkerSize, &wg)
 
 	ub, err := db.GetUnfinishedBlocks(ctx)
 	if err != nil {
@@ -70,8 +78,8 @@ func main() {
 	bCollectors.SetUnfinishedBlocks(ub)
 	bCollectors.SetFromBlock(fb.Add(fb, big.NewInt(1)))
 
-	txHashes := make(chan []common.Hash, *txWorkerSize * 2)
-	txReceipts := make(chan []*transaction.TX, *txWorkerSize * 2)
+	txHashes := make(chan []common.Hash, *txWorkerSize*2)
+	txReceipts := make(chan []*transaction.TX, *txWorkerSize*2)
 	txCollectors := collector.NewTxCollector(rpcList,
 		*txWorkerSize, &wg, txHashes, txReceipts)
 

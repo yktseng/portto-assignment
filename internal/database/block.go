@@ -20,7 +20,7 @@ func (db *Database) SaveBlock(ctx context.Context, b *block.Block) error {
 	result := db.conn.Clauses(
 		clause.OnConflict{
 			Columns:   []clause.Column{{Name: "block_hash"}},
-			DoNothing: true,
+			UpdateAll: true,
 		},
 	).Create(b)
 	if result.Error != nil {
@@ -37,6 +37,21 @@ func (db *Database) SetBlockDone(ctx context.Context, hash common.Hash) error {
 		return result.Error
 	}
 	result = db.conn.WithContext(ctx).Model(&block.Block{}).Where("block_hash = ?", hash.String()).Update("done", true)
+	if result.Error != nil {
+		log.Panicln(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *Database) SetBlockStable(ctx context.Context, hash common.Hash) error {
+	var b block.Block
+	result := db.conn.WithContext(ctx).Table("blocks").Where("block_hash = ?", hash.String()).Find(&b)
+	if result.Error != nil {
+		log.Panicln(result.Error)
+		return result.Error
+	}
+	result = db.conn.WithContext(ctx).Model(&block.Block{}).Where("block_hash = ?", hash.String()).Update("stable", true)
 	if result.Error != nil {
 		log.Panicln(result.Error)
 		return result.Error
@@ -82,7 +97,7 @@ func (db *Database) Getblocks(ctx context.Context, q BlockQuery) ([]block.Block,
 	var blocks []block.Block
 	query := db.conn.WithContext(ctx).Table("blocks")
 	if q.Limit > 0 {
-		query = query.Limit(q.Limit).Order("block_hash desc")
+		query = query.Limit(q.Limit).Order("num desc")
 	}
 	result := query.Find(&blocks)
 	if result.Error != nil {

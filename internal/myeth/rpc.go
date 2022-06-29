@@ -12,6 +12,7 @@ import (
 
 type RPC struct {
 	client *ethclient.Client
+	endpoint string
 }
 
 func (r *RPC) Connect(endpoint string) bool {
@@ -20,7 +21,12 @@ func (r *RPC) Connect(endpoint string) bool {
 		return false
 	}
 	r.client = client
+	r.endpoint = endpoint
 	return true
+}
+
+func (r *RPC) Endpoint() string {
+	return r.endpoint
 }
 
 func (r *RPC) GetBlock(ctx context.Context,
@@ -33,6 +39,7 @@ func (r *RPC) GetBlock(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	block.Stable = true
 	return block, nil
 }
 
@@ -52,4 +59,12 @@ func (r *RPC) GetTxReceipt(ctx context.Context,
 		return nil, err
 	}
 	return receipt, nil
+}
+
+func(r *RPC) GetNewestBlock(ctx context.Context) (*big.Int, error) {
+	b, err := r.client.BlockByNumber(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return b.Number(), nil
 }
