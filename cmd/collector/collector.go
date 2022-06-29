@@ -24,6 +24,8 @@ import (
 var pprof = flag.Bool("pprof", false, "enable pprof")
 var bWorkerSize = flag.Int("block-workers", 1, "number of block collectors")
 var txWorkerSize = flag.Int("tx-workers", 4, "number of tx collectors")
+var wsEndpoint = flag.String("ws-endpoint", "", "ws endpoint")
+
 
 func main() {
 
@@ -38,7 +40,11 @@ func main() {
 	}
 	rpcList := []*myeth.RPC{}
 
-	ws := "wss://speedy-nodes-nyc.moralis.io/abd644fc46832389b55dc6d9/bsc/testnet/ws"
+	if *wsEndpoint == "" {
+		panic("--ws-endpoint must be a valid bsc testnet websocket endpoint")
+	}
+
+	ws := *wsEndpoint
 	for i := 0; i < len(endpoints); i++ {
 		rpc := myeth.RPC{}
 		result := rpc.Connect(endpoints[i])

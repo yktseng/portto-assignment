@@ -1,6 +1,6 @@
 # Portto Assignment
 
-## A eth block collector
+## An ETH(BSC) block collector
 
 ## Prerequisites
 
@@ -20,8 +20,9 @@ To initialize the db schema,
 
 possible input parameters are
 
-*  bWorkerSize: workers to collect blocks, default is 1
-*  txWorkerSize: workers to collect transactions, default is 8
+*  `--block-workers`: workers to collect blocks, default is 1
+*  `--tx-workers`: workers to collect transactions, default is 8
+*  `--ws-endpoint`: websocket endpoint
 
 `go run cmd/webserver/webserver.go` starts the web server
 
@@ -32,6 +33,9 @@ possible input parameters are
 
 * Able to adjust block and transaction collector sizes
 * Use websocket endpoint to listen to new headers
+
+(for the websocket endpoint, you should replace the url to your own.)
+
 * It seems that BSC blocks does not contain uncles, so I just blindly see the recent 20 blocks as unconfirmed and fetch the blocks again after 20 blocks
 
 ## Perf tuning
