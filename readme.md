@@ -22,7 +22,7 @@ possible input parameters are
 
 *  `--block-workers`: workers to collect blocks, default is 1
 *  `--tx-workers`: workers to collect transactions, default is 8
-*  `--ws-endpoint`: websocket endpoint
+*  `--ws-endpoint`: required. websocket endpoint
 
 `go run cmd/webserver/webserver.go` starts the web server
 
