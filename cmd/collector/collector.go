@@ -26,7 +26,6 @@ var bWorkerSize = flag.Int("block-workers", 1, "number of block collectors")
 var txWorkerSize = flag.Int("tx-workers", 4, "number of tx collectors")
 var wsEndpoint = flag.String("ws-endpoint", "", "ws endpoint")
 
-
 func main() {
 
 	flag.Parse()
@@ -82,9 +81,16 @@ func main() {
 		panic(err)
 	}
 
-	mb, err := db.GetMissingBlocks(ctx)
-	if err != nil {
-		panic(err)
+	var mb []*big.Int
+	for {
+		missing, err := db.GetMissingBlocks(ctx)
+		if err != nil {
+			panic(err)
+		}
+		mb = append(mb, missing...)
+		if len(missing) == 0 {
+			break
+		}
 	}
 
 	bCollectors.SetMissingBlocks(mb)

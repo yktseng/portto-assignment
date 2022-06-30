@@ -87,6 +87,9 @@ func (db *Database) GetMissingBlocks(ctx context.Context) ([]*big.Int, error) {
 		return nil, result.Error
 	}
 	var unfinishedBlocks []*big.Int
+	if len(blocks) == 1 { // if there are only one match (means no missing)
+		return unfinishedBlocks, nil
+	}
 	for _, b := range blocks {
 		var n64 int64
 		err := b.Num.AssignTo(&n64)
